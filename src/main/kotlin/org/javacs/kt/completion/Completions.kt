@@ -8,6 +8,7 @@ import org.javacs.kt.LOG
 import org.javacs.kt.util.findParent
 import org.javacs.kt.util.noResult
 import org.javacs.kt.util.toPath
+import org.javacs.kt.symbols.GlobalSymbolsManager
 import org.jetbrains.kotlin.container.get
 import org.jetbrains.kotlin.descriptors.*
 import org.jetbrains.kotlin.js.resolve.diagnostics.findPsi
@@ -47,7 +48,7 @@ fun completions(file: CompiledFile, cursor: Int): CompletionList {
     return CompletionList(isIncomplete, list)
 }
 
-private val callPattern = Regex("(.*)\\((\\$\\d+)?\\)")
+private val callPattern by lazy { Regex("(.*)\\((\\$\\d+)?\\)") }
 private val methodSignature = Regex("""(?:fun|constructor) (?:<(?:[a-zA-Z\?\!\: ]+)(?:, [A-Z])*> )?([a-zA-Z]+\(.*\))""")
 
 private fun completionItem(d: DeclarationDescriptor, surroundingElement: KtElement, file: CompiledFile): CompletionItem {
@@ -108,6 +109,17 @@ private fun completableElement(file: CompiledFile, cursor: Int): KtElement? {
             el as? KtNameReferenceExpression
 }
 
+private val symbolsManagers = mutableMapOf<ModuleDescriptor, GlobalSymbolsManager>()
+
+private fun getSymbolsManager(module: ModuleDescriptor): GlobalSymbolsManager {
+    val cached = symbolsManagers[module]
+    if (cached == null) {
+        val newSymbolsManager = GlobalSymbolsManager(module)
+        symbolsManagers[module] = newSymbolsManager
+        return newSymbolsManager
+    } else return cached
+}
+
 private fun doCompletions(file: CompiledFile, cursor: Int, surroundingElement: KtElement): Sequence<DeclarationDescriptor> {
     return when (surroundingElement) {
         // import x.y.?
@@ -161,8 +173,9 @@ private fun doCompletions(file: CompiledFile, cursor: Int, surroundingElement: K
         // ?
         is KtNameReferenceExpression -> {
             LOG.info("Completing identifier '{}'", surroundingElement.text)
+            val module = file.container.get<ModuleDescriptor>()
             val scope = file.scopeAtPoint(surroundingElement.startOffset) ?: return noResult("No scope at ${file.describePosition(cursor)}", emptySequence())
-            identifiers(scope)
+            globalIdentifiers(module) // EXPERIMENTAL
         }
         else -> {
             LOG.info("{} {} didn't look like a type, a member, or an identifier", surroundingElement::class.simpleName, surroundingElement.text)
@@ -238,6 +251,9 @@ private fun scopeExtensionFunctions(scope: HierarchicalScope): Sequence<Callable
     scope.getContributedDescriptors(DescriptorKindFilter.CALLABLES).asSequence()
             .filterIsInstance<CallableDescriptor>()
             .filter { it.isExtension }
+
+private fun globalIdentifiers(module: ModuleDescriptor): Sequence<DeclarationDescriptor> =
+    getSymbolsManager(module).deepQueryAllSymbols().asSequence()
 
 private fun identifiers(scope: LexicalScope): Sequence<DeclarationDescriptor> =
     scope.parentsWithSelf
