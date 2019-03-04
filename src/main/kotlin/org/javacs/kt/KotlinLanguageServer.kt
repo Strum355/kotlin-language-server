@@ -10,6 +10,9 @@ import java.net.URI
 import java.nio.file.Paths
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CompletableFuture.completedFuture
+import org.javacs.kt.completion.globalIdentifiers
+import org.jetbrains.kotlin.descriptors.ModuleDescriptor
+import org.jetbrains.kotlin.container.get
 
 class KotlinLanguageServer : LanguageServer, LanguageClientAware {
     val classPath = CompilerClassPath()
@@ -63,6 +66,10 @@ class KotlinLanguageServer : LanguageServer, LanguageClientAware {
 
             sourceFiles.addWorkspaceRoot(root)
             classPath.addWorkspaceRoot(root)
+            sourceFiles.files.keys.forEach {
+                val compiled = sourcePath.currentVersion(it)
+                globalIdentifiers(compiled.container.get<ModuleDescriptor>())
+            }
         }
 
         return completedFuture(InitializeResult(capabilities))

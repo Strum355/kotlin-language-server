@@ -32,6 +32,7 @@ import org.jetbrains.kotlin.types.KotlinType
 import org.jetbrains.kotlin.types.TypeUtils
 import org.jetbrains.kotlin.types.typeUtil.supertypes
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.*
 
 private const val MAX_COMPLETION_ITEMS = 50
 
@@ -252,8 +253,10 @@ private fun scopeExtensionFunctions(scope: HierarchicalScope): Sequence<Callable
             .filterIsInstance<CallableDescriptor>()
             .filter { it.isExtension }
 
-private fun globalIdentifiers(module: ModuleDescriptor): Sequence<DeclarationDescriptor> =
-    getSymbolsManager(module).deepQueryAllSymbols().asSequence()
+fun globalIdentifiers(module: ModuleDescriptor): Sequence<DeclarationDescriptor> {
+    LOG.info(module.name.toString())
+    return getSymbolsManager(module).deepQueryAllSymbols().asSequence()
+}
 
 private fun identifiers(scope: LexicalScope): Sequence<DeclarationDescriptor> =
     scope.parentsWithSelf

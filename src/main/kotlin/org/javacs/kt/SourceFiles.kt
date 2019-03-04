@@ -10,12 +10,12 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.util.stream.Collectors
 
-private class SourceVersion(val content: String, val version: Int)
+class SourceVersion(val content: String, val version: Int)
 
 /**
  * Notify SourcePath whenever a file changes
  */
-private class NotifySourcePath(private val sp: SourcePath) {
+public class NotifySourcePath(private val sp: SourcePath) {
     private val files = mutableMapOf<Path, SourceVersion>()
 
     operator fun get(file: Path): SourceVersion? = files[file]
@@ -47,7 +47,7 @@ private class NotifySourcePath(private val sp: SourcePath) {
 class SourceFiles(private val sp: SourcePath) {
     private val workspaceRoots = mutableSetOf<Path>()
     private var exclusions = SourceExclusions(workspaceRoots)
-    private val files = NotifySourcePath(sp)
+    public val files = NotifySourcePath(sp)
     private val open = mutableSetOf<Path>()
 
     fun open(file: Path, content: String, version: Int) {
